@@ -29,29 +29,41 @@
 
         .navbar {
             background: linear-gradient(135deg, #2a1b4a, #ff1493);
-            padding: 0.8rem 1rem;
+            padding: 1rem;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
             position: sticky;
             top: 0;
             z-index: 1000;
+            animation: glow 2s ease-in-out infinite;
         }
-        .navbar .logo img {
-            max-width: 200px;
-            height: auto;
-            display: block;
+        @keyframes glow {
+            0% { box-shadow: 0 4px 10px rgba(255, 20, 147, 0.5); }
+            50% { box-shadow: 0 4px 20px rgba(255, 20, 147, 0.8); }
+            100% { box-shadow: 0 4px 10px rgba(255, 20, 147, 0.5); }
+        }
+        .navbar .logo {
+            font-size: clamp(1.8rem, 6vw, 2.2rem);
+            font-weight: 900;
+            color: #ffb6c1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+        @keyframes logoPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
         .navbar .menu {
             display: flex;
-            gap: clamp(0.8rem, 3vw, 1.2rem);
-            align-items: center;
+            gap: clamp(1rem, 4vw, 1.5rem);
         }
         .navbar .menu a {
             color: #ffffff;
             text-decoration: none;
-            font-size: clamp(0.9rem, 3vw, 1.1rem);
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
             transition: color 0.3s, transform 0.2s;
         }
         .navbar .menu a:hover {
@@ -93,6 +105,8 @@
             cursor: pointer;
             font-size: clamp(0.9rem, 3vw, 1rem);
             transition: transform 0.2s, background 0.3s;
+            display: block;
+            margin: 0.5rem auto;
         }
         .wallet-button:hover {
             background: linear-gradient(135deg, #8a2be2, #ff69b4);
@@ -174,9 +188,6 @@
                 gap: 0.5rem;
                 padding: 0.6rem 1rem;
             }
-            .navbar .logo img {
-                max-width: 150px;
-            }
             .navbar .menu {
                 flex-direction: row;
                 flex-wrap: wrap;
@@ -193,9 +204,9 @@
                 max-width: 100%;
             }
         }
-        @media (max-width: 360px) {
-            .navbar .logo img {
-                max-width: 120px;
+        @de (max-width: 360px) {
+            .navbar .logo {
+                font-size: 1.4rem;
             }
             .navbar .menu a {
                 font-size: 0.8rem;
@@ -221,9 +232,7 @@
 </head>
 <body>
     <nav class="navbar">
-        <div class="logo">
-            <img src="https://via.placeholder.com/200x50?text=SOKO$Pocket+Logo" alt="SOKO$Pocket Logo">
-        </div>
+        <div class="logo">SOKO$Pocket</div>
         <div class="menu">
             <a href="#home">Home</a>
             <a href="#games">Games</a>
@@ -262,47 +271,65 @@
         let walletAddress = null;
 
         async function getWalletBalance(address) {
-            try {
-                const response = await axios.post('https://toncenter.com/api/v2/jsonRPC', {
-                    jsonrpc: '2.0',
-                    id: 1,
-                    method: 'getAddressBalance',
-                    params: { address: address }
-                }, {
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-API-Key': 'YOUR_TONCENTER_API_KEY' // Replace with your actual API key
-                    }
-                });
+            // Validate TON address format (raw format: 0: followed by 64 hex chars)
+            const tonAddressRegex = /^0:[0-9a-fA-F]{64}$/;
+            if (!tonAddressRegex.test(address)) {
+                console.error('Invalid TON address format:', address);
+                return 'Invalid Address';
+            }
 
-                console.log('API Response:', response.data); // Debugging
+            const maxRetries = 3;
+            let attempts = 0;
 
-                if (response.data.result) {
-                    const balanceNanotons = parseInt(response.data.result);
-                    if (isNaN(balanceNanotons)) {
-                        throw new Error('Invalid balance returned');
+            while (attempts < maxRetries) {
+                try {
+                    const response = await axios.post('https://toncenter.com/api/v2/jsonRPC', {
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'getAddressBalance',
+                        params: { address: address }
+                    }, {
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-API-Key': 'YOUR_TONCENTER_API_KEY' // Replace with your actual API key
+                        }
+                    });
+
+                    console.log('TON API Response:', response.data); // Debugging
+
+                    if (response.data.result) {
+                        const balanceNanotons = parseInt(response.data.result);
+                        if (isNaN(balanceNanotons)) {
+                            throw new Error('Invalid balance returned');
+                        }
+                        const balanceTON = balanceNanotons / 1_000_000_000; // Convert nanotons to TON
+                        return balanceTON.toFixed(2);
+                    } else {
+                        throw new Error(response.data.error?.message || 'Failed to fetch balance');
                     }
-                    const balanceTON = balanceNanotons / 1_000_000_000; // Convert nanotons to TON
-                    return balanceTON.toFixed(2);
-                } else {
-                    throw new Error(response.data.error?.message || 'Failed to fetch balance');
+                } catch (error) {
+                    attempts++;
+                    console.error(`Attempt ${attempts} failed:`, error.message);
+                    if (attempts === maxRetries) {
+                        console.error('Max retries reached. Error:', error.message);
+                        return error.message.includes('API key') ? 'API Key Error' : 'API Error';
+                    }
+                    // Wait 2 seconds before retrying
+                    await new Promise(resolve => setTimeout(resolve, 2000));
                 }
-            } catch (error) {
-                console.error('Balance fetch error:', error.message);
-                return 'Error';
             }
         }
 
         async function updateWalletBalance() {
             const balanceElement = document.getElementById('ton-balance');
+            balanceElement.innerText = 'Fetching...';
             if (!walletConnected || !walletAddress) {
                 balanceElement.innerText = 'Connect Wallet';
                 return;
             }
 
-            balanceElement.innerText = 'Fetching...';
             const balance = await getWalletBalance(walletAddress);
-            balanceElement.innerText = balance === 'Error' ? 'Error' : `${balance} TON`;
+            balanceElement.innerText = balance.includes('Error') || balance === 'Invalid Address' ? balance : `${balance} TON`;
         }
 
         tonConnectUI.onStatusChange(walletInfo => {
