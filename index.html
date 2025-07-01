@@ -1,1 +1,330 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SOKO$Pocket Casino</title>
+    <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            font-weight: bold;
+            background: linear-gradient(135deg, #1a0d2e, #ff1493);
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+            animation: bgPulse 5s ease-in-out infinite;
+        }
 
+        @keyframes bgPulse {
+            0% { background: linear-gradient(135deg, #1a0d2e, #ff1493); }
+            50% { background: linear-gradient(135deg, #2a1b4a, #ff69b4); }
+            100% { background: linear-gradient(135deg, #1a0d2e, #ff1493); }
+        }
+
+        .navbar {
+            background: linear-gradient(135deg, #2a1b4a, #ff1493);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            animation: glow 2s ease-in-out infinite;
+        }
+        @keyframes glow {
+            0% { box-shadow: 0 4px 10px rgba(255, 20, 147, 0.5); }
+            50% { box-shadow: 0 4px 20px rgba(255, 20, 147, 0.8); }
+            100% { box-shadow: 0 4px 10px rgba(255, 20, 147, 0.5); }
+        }
+        .navbar .logo {
+            font-size: clamp(1.8rem, 6vw, 2.2rem);
+            font-weight: 900;
+            color: #ffb6c1;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.7);
+            animation: logoPulse 3s ease-in-out infinite;
+        }
+        @keyframes logoPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        .navbar .menu {
+            display: flex;
+            gap: clamp(1rem, 4vw, 1.5rem);
+        }
+        .navbar .menu a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
+            transition: color 0.3s, transform 0.2s;
+        }
+        .navbar .menu a:hover {
+            color: #ff69b4;
+            transform: translateY(-2px);
+        }
+
+        .wallet-section {
+            background: rgba(42, 27, 74, 0.95);
+            margin: 1rem auto;
+            padding: 1.5rem;
+            border-radius: 16px;
+            width: 90%;
+            max-width: 600px;
+            text-align: center;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 6px 20px rgba(255, 20, 147, 0.5);
+            animation: walletGlow 3s ease-in-out infinite;
+        }
+        @keyframes walletGlow {
+            0% { box-shadow: 0 6px 20px rgba(255, 20, 147, 0.5); }
+            50% { box-shadow: 0 6px 30px rgba(255, 20, 147, 0.8); }
+            100% { box-shadow: 0 6px 20px rgba(255, 20, 147, 0.5); }
+        }
+        .wallet-section h2 {
+            margin: 0 0 1rem;
+            color: #ff69b4;
+            font-size: clamp(1.4rem, 4.5vw, 1.8rem);
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+        .wallet-balance {
+            font-size: clamp(1.4rem, 4.5vw, 1.8rem);
+            margin: 1rem 0;
+            color: #ffffff;
+            background: rgba(255, 20, 147, 0.2);
+            padding: 0.5rem;
+            border-radius: 8px;
+        }
+        .wallet-button {
+            background: linear-gradient(135deg, #6a0dad, #ff1493);
+            color: #ffffff;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: clamp(1rem, 3.5vw, 1.2rem);
+            transition: transform 0.2s, background 0.3s;
+        }
+        .wallet-button:hover {
+            background: linear-gradient(135deg, #8a2be2, #ff69b4);
+            transform: scale(1.1);
+        }
+
+        .mini-games {
+            flex: 1;
+            padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .mini-games h2 {
+            color: #ff69b4;
+            margin-bottom: 1.5rem;
+            font-size: clamp(1.6rem, 5vw, 2rem);
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
+        .game-card {
+            background: rgba(42, 27, 74, 0.95);
+            border-radius: 16px;
+            padding: 1rem;
+            width: 90%;
+            max-width: 320px;
+            text-align: center;
+            transition: transform 0.3s, box-shadow 0.3s;
+            backdrop-filter: blur(10px);
+            margin-bottom: 1rem;
+            box-shadow: 0 4px 15px rgba(255, 20, 147, 0.4);
+        }
+        .game-card:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 25px rgba(255, 20, 147, 0.7);
+        }
+        .game-card img {
+            width: 100%;
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            border: 2px solid #ff69b4;
+        }
+        .game-card h3 {
+            margin: 0 0 0.5rem;
+            color: #ffffff;
+            font-size: clamp(1.2rem, 3.5vw, 1.4rem);
+        }
+        .game-card p {
+            margin: 0 0 1rem;
+            color: #e0e0e0;
+            font-size: clamp(0.9rem, 3vw, 1rem);
+        }
+        .game-card button {
+            background: linear-gradient(135deg, #6a0dad, #ff1493);
+            color: #ffffff;
+            border: none;
+            padding: 0.7rem 1.2rem;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: clamp(0.9rem, 3vw, 1rem);
+            transition: background 0.3s, transform 0.2s;
+        }
+        .game-card button:hover {
+            background: linear-gradient(135deg, #8a2be2, #ff69b4);
+            transform: scale(1.1);
+        }
+
+        footer {
+            background: linear-gradient(135deg, #2a1b4a, #ff1493);
+            text-align: center;
+            padding: 1rem;
+            color: #e0e0e0;
+            font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+            box-shadow: 0 -2px 10px rgba(255, 20, 147, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .navbar {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .navbar .menu {
+                flex-direction: row;
+                flex-wrap: wrap;
+                justify-content: center;
+            }
+            .wallet-section {
+                width: 95%;
+                margin: 0.5rem auto;
+                padding: 1rem;
+            }
+            .game-card {
+                width: 95%;
+                max-width: 100%;
+            }
+        }
+        @media (max-width: 360px) {
+            .navbar .logo {
+                font-size: 1.4rem;
+            }
+            .navbar .menu a {
+                font-size: 0.9rem;
+            }
+            .wallet-section h2, .wallet-balance {
+                font-size: 1.1rem;
+            }
+            .wallet-button {
+                padding: 0.6rem 1rem;
+                font-size: 0.9rem;
+            }
+            .mini-games h2 {
+                font-size: 1.3rem;
+            }
+            .game-card h3 {
+                font-size: 1.1rem;
+            }
+            .game-card p, .game-card button {
+                font-size: 0.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">SOKO$Pocket</div>
+        <div class="menu">
+            <a href="#home">Home</a>
+            <a href="#games">Games</a>
+            <a href="#promotions">Promotions</a>
+            <a href="#support">Support</a>
+        </div>
+    </nav>
+
+    <section class="wallet-section">
+        <h2>TON Wallet</h2>
+        <div class="wallet-balance">Balance: <span id="ton-balance">0.00 TON</span></div>
+        <div id="ton-connect" class="wallet-button"></div>
+    </section>
+
+    <section class="mini-games">
+        <h2>Mini Games</2>
+        <div class="game-card">
+            <img src="https://via.placeholder.com/300x150?text=Lucky+Jet" alt="Lucky Jet">
+            <h3>Lucky Jet</h3>
+            <p>Bet and cash out before the jet crashes to multiply your stake!</p>
+            <button onclick="playGame('lucky-jet')">Play Now</button>
+        </div>
+    </section>
+
+    <footer>
+        © 2025 SOKO$Pocket Casino. All rights reserved.
+    </footer>
+
+    <script>
+        const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
+            manifestUrl: 'https://safiyev.github.io/manigest/manifest.json',
+            buttonRootId: 'ton-connect'
+        });
+
+        let walletConnected = false;
+        let walletAddress = null;
+
+        async function getWalletBalance(address) {
+            try {
+                const response = await axios.post('https://toncenter.com/api/v2/jsonRPC', {
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'getAddressBalance',
+                    params: { address: address }
+                }, {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-API-Key': 'YOUR_TONCENTER_API_KEY' // Replace with your actual API key
+                    }
+                });
+
+                if (response.data.result) {
+                    const balanceNanotons = parseInt(response.data.result);
+                    const balanceTON = balanceNanotons / 1_000_000_000; // Convert nanotons to TON
+                    return balanceTON.toFixed(2);
+                } else {
+                    throw new Error('Failed to fetch balance');
+                }
+            } catch (error) {
+                console.error('Error fetching balance:', error);
+                return 'Error';
+            }
+        }
+
+        async function updateWalletBalance() {
+            if (walletConnected && walletAddress) {
+                const balance = await getWalletBalance(walletAddress);
+                document.getElementById('ton-balance').innerText = `${balance} TON`;
+            } else {
+                document.getElementById('ton-balance').innerText = '0.00 TON';
+            }
+        }
+
+        tonConnectUI.onStatusChange(walletInfo => {
+            walletConnected = !!walletInfo;
+            walletAddress = walletInfo?.account?.address || null;
+            updateWalletBalance();
+        });
+
+        function playGame(gameId) {
+            // Placeholder for game navigation
+            alert(`Starting ${gameId}... (Placeholder for game launch)`);
+            // Redirect or load game logic here
+        }
+
+        // Update balance periodically
+        setInterval(updateWalletBalance, 30000);
+
+        // Initial balance check
+        updateWalletBalance();
+    </script>
+</body>
+</html>
