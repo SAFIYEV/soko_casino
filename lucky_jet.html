@@ -1,1 +1,273 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Lucky Jet</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a0d2e, #4b0082);
+            color: #fff;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+        .navbar {
+            background: linear-gradient(135deg, #2a1b4a, #ff1493);
+            padding: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+        }
+        .navbar .logo {
+            font-size: clamp(1.8rem, 6vw, 2.2rem);
+            font-weight: 900;
+            color: #ffb6c1;
+        }
+        .wallet-section {
+            background: rgba(42, 27, 74, 0.95);
+            margin: 1rem auto;
+            padding: 1rem;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            box-shadow: 0 4px 12px rgba(255, 20, 147, 0.4);
+        }
+        .wallet-balance {
+            font-size: clamp(1.2rem, 4vw, 1.5rem);
+            margin: 0.8rem 0;
+            background: rgba(255, 20, 147, 0.15);
+            padding: 0.5rem;
+            border-radius: 6px;
+        }
+        .game-section {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+        }
+        .game-section canvas {
+            width: 90%;
+            max-width: 500px;
+            height: 300px;
+            border-radius: 8px;
+            border: 1px solid #ff69b4;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        .controls {
+            margin: 1rem 0;
+        }
+        .controls input {
+            padding: 0.5rem;
+            border-radius: 8px;
+            border: 1px solid #ff69b4;
+            font-size: clamp(0.9rem, 3vw, 1rem);
+        }
+        .controls button {
+            background: linear-gradient(135deg, #6a0dad, #ff1493);
+            color: #fff;
+            border: none;
+            padding: 0.7rem 1.4rem;
+            border-radius: 12px;
+            cursor: pointer;
+            font-size: clamp(0.9rem, 3vw, 1rem);
+            margin: 0 0.5rem;
+        }
+        .controls button:hover {
+            background: linear-gradient(135deg, #8a2be2, #ff69b4);
+            transform: scale(1.05);
+        }
+        .controls button:disabled {
+            background: #555;
+            cursor: not-allowed;
+        }
+        .video-section {
+            margin: 1rem auto;
+            width: 90%;
+            max-width: 500px;
+        }
+        .video-section iframe {
+            width: 100%;
+            height: 280px;
+            border-radius: 12px;
+            border: 1px solid #ff69b4;
+        }
+        footer {
+            background: linear-gradient(135deg, #2a1b4a, #ff1493);
+            text-align: center;
+            padding: 0.8rem;
+            color: #e0e0e0;
+            font-size: clamp(0.7rem, 2.5vw, 0.8rem);
+        }
+        @media (max-width: 768px) {
+            .video-section iframe {
+                height: 200px;
+            }
+        }
+        @media (max-width: 360px) {
+            .wallet-section, .game-section, .video-section {
+                width: 95%;
+            }
+            .video-section iframe {
+                height: 160px;
+            }
+            .controls input, .controls button {
+                font-size: 0.8rem;
+                padding: 0.5rem 1rem;
+            }
+            .game-section canvas {
+                height: 200px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">Lucky Jet</div>
+        <a href="index.html">Назад</a>
+    </nav>
 
+    <section class="wallet-section">
+        <h2>Виртуальный кошелёк</h2>
+        <div class="wallet-balance">Баланс: <span id="virtual-balance">100.00 токенов</span></div>
+    </section>
+
+    <section class="game-section">
+        <h2>Lucky Jet</h2>
+        <canvas id="gameCanvas" width="500" height="300"></canvas>
+        <div class="controls">
+            <input type="number" id="betAmount" placeholder="Ставка (токены)" min="0.1" step="0.1">
+            <button id="startGameBtn" onclick="startGame()">Начать игру</button>
+            <button id="cashOutBtn" onclick="cashOut()" disabled>Закончить игру</button>
+        </div>
+        <p id="multiplier">Множитель: 1.00x</p>
+    </section>
+
+    <section class="video-section">
+        <iframe src="https://www.youtube.com/embed/lfbU4Vo1H9M?autoplay=1&mute=1&loop=1&playlist=lfbU4Vo1H9M" 
+                frameborder="0" allow="autoplay; muted" allowfullscreen></iframe>
+    </section>
+
+    <footer>
+        © 2025 SOKO$Pocket Casino. Все права защищены.
+    </footer>
+
+    <script>
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            document.body.style.background = tg.themeParams.bg_color || 'linear-gradient(135deg, #1a0d2e, #4b0082)';
+            document.querySelector('.navbar').style.background = tg.themeParams.secondary_bg_color || 'linear-gradient(135deg, #2a1b4a, #ff1493)';
+        }
+
+        let virtualBalance = 100;
+        let gameRunning = false;
+        let multiplier = 1;
+        let bet = 0;
+        let speed = 0.02;
+        let jetY = 250;
+        let graphPoints = [];
+
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function updateVirtualBalance() {
+            const balanceElement = document.getElementById('virtual-balance');
+            balanceElement.innerText = `${virtualBalance.toFixed(2)} токенов`;
+            localStorage.setItem('virtualBalance', virtualBalance);
+        }
+
+        function drawGame() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // График множителя
+            ctx.beginPath();
+            ctx.strokeStyle = '#ff69b4';
+            ctx.lineWidth = 2;
+            for (let i = 0; i < graphPoints.length; i++) {
+                const x = (i / (graphPoints.length - 1)) * canvas.width;
+                const y = canvas.height - (graphPoints[i] * 50);
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Джет
+            ctx.fillStyle = '#ff69b4';
+            ctx.fillRect(canvas.width / 2 - 25, jetY, 50, 30);
+            ctx.fillStyle = '#fff';
+            ctx.font = '20px Arial';
+            ctx.fillText(`Множитель: ${multiplier.toFixed(2)}x`, 20, 30);
+        }
+
+        function updateGame() {
+            if (!gameRunning) return;
+            multiplier += speed;
+            speed += 0.0005;
+            jetY -= 2;
+            graphPoints.push(multiplier);
+            if (graphPoints.length > 100) graphPoints.shift();
+            if (Math.random() < 0.015 || jetY < 0) {
+                endGame();
+            }
+            document.getElementById('multiplier').innerText = `Множитель: ${multiplier.toFixed(2)}x`;
+            drawGame();
+            requestAnimationFrame(updateGame);
+        }
+
+        function startGame() {
+            const betInput = document.getElementById('betAmount');
+            bet = parseFloat(betInput.value);
+            if (isNaN(bet) || bet <= 0) {
+                alert('Введи корректную ставку!');
+                return;
+            }
+            if (bet > virtualBalance) {
+                alert('Недостаточно токенов!');
+                return;
+            }
+            virtualBalance -= bet;
+            updateVirtualBalance();
+            gameRunning = true;
+            multiplier = 1;
+            speed = 0.02;
+            jetY = 250;
+            graphPoints = [1];
+            document.getElementById('startGameBtn').disabled = true;
+            document.getElementById('cashOutBtn').disabled = false;
+            updateGame();
+        }
+
+        function cashOut() {
+            if (!gameRunning) return;
+            gameRunning = false;
+            document.getElementById('startGameBtn').disabled = false;
+            document.getElementById('cashOutBtn').disabled = true;
+            alert(`Обналичил на ${multiplier.toFixed(2)}x! Токены не начислены (выигрыш отключен).`);
+        }
+
+        function endGame() {
+            gameRunning = false;
+            document.getElementById('startGameBtn').disabled = false;
+            document.getElementById('cashOutBtn').disabled = true;
+            alert(`Джет разбился на ${multiplier.toFixed(2)}x! Ты потерял ${bet.toFixed(2)} токенов.`);
+        }
+
+        window.addEventListener('load', () => {
+            const savedBalance = localStorage.getItem('virtualBalance');
+            if (savedBalance) virtualBalance = parseFloat(savedBalance);
+            updateVirtualBalance();
+        });
+    </script>
+</body>
+</html>
