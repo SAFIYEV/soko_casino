@@ -6,6 +6,8 @@
     <title>SOKO$Pocket Casino</title>
     <script src="https://unpkg.com/@tonconnect/ui@latest/dist/tonconnect-ui.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script src="https://unpkg.com/@ton/ton@latest/dist/ton.min.js"></script>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <style>
         body {
             margin: 0;
@@ -173,6 +175,21 @@
             transform: scale(1.05);
         }
 
+        .video-section {
+            margin: 1rem auto;
+            padding: 1rem;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+        }
+        .video-section iframe {
+            width: 100%;
+            height: 280px; /* Adjusted for 16:9 aspect ratio on mobile */
+            border-radius: 12px;
+            border: 1px solid #ff69b4;
+            box-shadow: 0 3px 10px rgba(255, 20, 147, 0.3);
+        }
+
         footer {
             background: linear-gradient(135deg, #2a1b4a, #ff1493);
             text-align: center;
@@ -180,6 +197,21 @@
             color: #e0e0e0;
             font-size: clamp(0.7rem, 2.5vw, 0.8rem);
             box-shadow: 0 -2px 8px rgba(255, 20, 147, 0.3);
+        }
+
+        .loading-spinner {
+            display: none;
+            margin: 0.5rem auto;
+            width: 24px;
+            height: 24px;
+            border: 3px solid #ff69b4;
+            border-top: 3px solid transparent;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
 
         @media (max-width: 768px) {
@@ -203,8 +235,11 @@
                 width: 95%;
                 max-width: 100%;
             }
+            .video-section iframe {
+                height: 200px; /* Smaller height for tablets */
+            }
         }
-        @de (max-width: 360px) {
+        @media (max-width: 360px) {
             .navbar .logo {
                 font-size: 1.4rem;
             }
@@ -227,6 +262,9 @@
             .game-card p, .game-card button {
                 font-size: 0.7rem;
             }
+            .video-section iframe {
+                height: 160px; /* Smaller height for small phones */
+            }
         }
     </style>
 </head>
@@ -244,6 +282,7 @@
     <section class="wallet-section">
         <h2>TON Wallet</h2>
         <div class="wallet-balance">Balance: <span id="ton-balance">Connect Wallet</span></div>
+        <div class="loading-spinner" id="loading-spinner"></div>
         <div id="ton-connect" class="wallet-button"></div>
     </section>
 
@@ -257,11 +296,27 @@
         </div>
     </section>
 
+    <section class="video-section">
+        <iframe src="https://www.youtube.com/embed/lfbU4Vo1H9M?autoplay=1&mute=1&loop=1&playlist=lfbU4Vo1H9M" 
+                frameborder="0" allow="autoplay; muted" allowfullscreen></iframe>
+    </section>
+
     <footer>
         © 2025 SOKO$Pocket Casino. All rights reserved.
     </footer>
 
     <script>
+        // Initialize Telegram Web App
+        const tg = window.Telegram?.WebApp;
+        if (tg) {
+            tg.ready();
+            tg.expand();
+            // Apply Telegram theme colors
+            document.body.style.background = tg.themeParams.bg_color || 'linear-gradient(135deg, #1a0d2e, #4b0082)';
+            document.querySelector('.navbar').style.background = tg.themeParams.secondary_bg_color || 'linear-gradient(135deg, #2a1b4a, #ff1493)';
+        }
+
+        // Initialize TON Connect UI
         const tonConnectUI = new TON_CONNECT_UI.TonConnectUI({
             manifestUrl: 'https://safiyev.github.io/manigest/manifest.json',
             buttonRootId: 'ton-connect'
@@ -269,12 +324,28 @@
 
         let walletConnected = false;
         let walletAddress = null;
+        const API_KEY = 'f5b853e1bef59e4acea98d9f28587ee560f4e1ade83eb62bd01fbd680f10123a'; // TON Center API key
+
+        async function convertToRawAddress(userFriendlyAddress) {
+            try {
+                const address = window.TON.Address.parse(userFriendlyAddress);
+                return address.toString({ isUserFriendly: false });
+            } catch (error) {
+                console.error('Address conversion error:', error.message);
+                return null;
+            }
+        }
 
         async function getWalletBalance(address) {
-            // Validate TON address format (raw format: 0: followed by 64 hex chars)
-            const tonAddressRegex = /^0:[0-9a-fA-F]{64}$/;
-            if (!tonAddressRegex.test(address)) {
-                console.error('Invalid TON address format:', address);
+            const balanceElement = document.getElementById('ton-balance');
+            const spinner = document.getElementById('loading-spinner');
+            spinner.style.display = 'block';
+            balanceElement.innerText = 'Fetching...';
+
+            // Convert user-friendly address to raw format
+            const rawAddress = await convertToRawAddress(address);
+            if (!rawAddress) {
+                spinner.style.display = 'none';
                 return 'Invalid Address';
             }
 
@@ -287,15 +358,15 @@
                         jsonrpc: '2.0',
                         id: 1,
                         method: 'getAddressBalance',
-                        params: { address: address }
+                        params: { address: rawAddress }
                     }, {
                         headers: {
                             'Content-Type': 'application/json',
-                            'X-API-Key': 'YOUR_TONCENTER_API_KEY' // Replace with your actual API key
+                            'X-API-Key': API_KEY
                         }
                     });
 
-                    console.log('TON API Response:', response.data); // Debugging
+                    console.log('TON API Response:', response.data);
 
                     if (response.data.result) {
                         const balanceNanotons = parseInt(response.data.result);
@@ -303,6 +374,7 @@
                             throw new Error('Invalid balance returned');
                         }
                         const balanceTON = balanceNanotons / 1_000_000_000; // Convert nanotons to TON
+                        spinner.style.display = 'none';
                         return balanceTON.toFixed(2);
                     } else {
                         throw new Error(response.data.error?.message || 'Failed to fetch balance');
@@ -311,10 +383,9 @@
                     attempts++;
                     console.error(`Attempt ${attempts} failed:`, error.message);
                     if (attempts === maxRetries) {
-                        console.error('Max retries reached. Error:', error.message);
-                        return error.message.includes('API key') ? 'API Key Error' : 'API Error';
+                        spinner.style.display = 'none';
+                        return error.message.includes('API key') ? 'API Key Error' : 'Failed to fetch balance';
                     }
-                    // Wait 2 seconds before retrying
                     await new Promise(resolve => setTimeout(resolve, 2000));
                 }
             }
@@ -322,9 +393,9 @@
 
         async function updateWalletBalance() {
             const balanceElement = document.getElementById('ton-balance');
-            balanceElement.innerText = 'Fetching...';
             if (!walletConnected || !walletAddress) {
                 balanceElement.innerText = 'Connect Wallet';
+                document.getElementById('loading-spinner').style.display = 'none';
                 return;
             }
 
@@ -335,11 +406,15 @@
         tonConnectUI.onStatusChange(walletInfo => {
             walletConnected = !!walletInfo;
             walletAddress = walletInfo?.account?.address || null;
-            console.log('Wallet Status:', { connected: walletConnected, address: walletAddress }); // Debugging
+            console.log('Wallet Status:', { connected: walletConnected, address: walletAddress });
             updateWalletBalance();
         });
 
         function playGame(gameId) {
+            if (!walletConnected) {
+                alert('Please connect your TON wallet to play!');
+                return;
+            }
             alert(`Starting ${gameId}... (Placeholder for game launch)`);
             // Replace with actual game logic or URL
         }
